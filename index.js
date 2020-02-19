@@ -1,5 +1,6 @@
 const mcl = require("mcl-wasm");
 const utils = require("./utils");
+const attributes = {"a":2,"b":3,"c":4,"d":5,"e":6}
 
 mcl.init(mcl.BN254)
     .then(function() {
@@ -63,10 +64,41 @@ function authoritySetup(tpk) {
     return keypair;
 }
 
+function generateAttributes(ask,attriblist) {
+    const ska = {};
+
+    const Kbase = utils.generateRandomG1(mcl);
+    utils.setOpt(ska,"Kbase",Kbase);
+
+    const Fr_num_1 = new mcl.Fr();
+    Fr_num_1.setInt(1);
+    const k0 = mcl.div(Fr_num_1,ask["a0"]);
+    const K0 = mcl.mul(Kbase,k0);
+    utils.setOpt(ska,"K0",K0);
+
+    for (let i in attriblist) {
+        let number = attributes[attriblist[i]];
+        let Fr_num_x = new mcl.Fr();
+        Fr_num_x.setInt(number);
+
+        let bu = mcl.mul(Fr_num_x,ask["b"]);
+        let kx = mcl.add(ask["a"],bu);
+        kx = mcl.div(Fr_num_1,kx);
+
+        let Kx = mcl.mul(Kbase,kx);
+        utils.setOpt(ska,"K"+String(number),Kx);
+    }
+
+    return ska;
+}
+
 function testABS() {
     const tpk = trusteeSetup();
     console.log("tpk",tpk);
 
     const keypair = authoritySetup(tpk);
     console.log("keypair",keypair);
+
+    const ska = generateAttributes(keypair["ask"],["a","b"]);
+    console.log("ska",ska);
 }
