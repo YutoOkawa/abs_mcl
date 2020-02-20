@@ -1,6 +1,7 @@
 const mcl = require("mcl-wasm");
 const utils = require("./utils");
-const attributes = {"a":2,"b":3,"c":4,"d":5,"e":6}
+const attributes = {"Aqours":2,"AZALEA":3,"GuiltyKiss":4,"CYaRon":5};
+const attribute_msp = {"Aqours":2,2:"Aqours","AZALEA":3,3:"AZALEA","GuiltyKiss":4,4:"GuiltyKiss","CYaRon":5,5:"CYaRon"};
 
 mcl.init(mcl.BN254)
     .then(function() {
@@ -88,11 +89,41 @@ function generateAttributes(ask,attriblist) {
         let bu = mcl.mul(Fr_num_x,ask["b"]);
         let ku= mcl.add(ask["a"],bu);
         ku = mcl.div(Fr_num_1,ku);
-        let Kx = mcl.mul(Kbase,kx);
-        utils.setOpt(ska,"K"+String(number),Kx);
+        let Ku = mcl.mul(Kbase,ku);
+        utils.setOpt(ska,"K"+String(number),Ku);
     }
 
     return ska;
+}
+
+function generateSign(tpk,apk,ska,message,policy) {
+    const sign = {};
+    const r = [];
+    // TODO: getMSP関数の作成
+    const msp = [[1],[1],[0],[0]];
+
+    // μ = hash(message|policy)
+    const μ = mcl.hashToFr(message+policy);
+
+    for (let i=0; i<msp.length+1; i++) {
+        r.push(generateRandomFr());
+    }
+
+    const Y = mcl.mul(ska["Kbase"],r[0]);
+    utils.setOpt(sign,"Y",Y);
+
+    const W = mcl.mul(ska["K0"],r[0]);
+    utils.setOpt(sign,"W",W);
+
+    for (let i=1; i<msp.length+1; i++) {
+        // TODO: Siの演算
+    }
+
+    for (let j=1; j<msp[0].length+1; j++) {
+        // TODO: Pjの演算
+    }
+
+    return sign;
 }
 
 function testABS() {
@@ -102,6 +133,9 @@ function testABS() {
     const keypair = authoritySetup(tpk);
     console.log("keypair",keypair);
 
-    const ska = generateAttributes(keypair["ask"],["a","b"]);
+    const ska = generateAttributes(keypair["ask"],["Aqours","AZALEA"]);
     console.log("ska",ska);
+
+    const sign = generateSign(tpk,keypair["apk"],ska,"LoveLive","Aqours OR AZALEA")
+    console.log("sign",sign);
 }
