@@ -70,21 +70,24 @@ function generateAttributes(ask,attriblist) {
     const Kbase = utils.generateRandomG1(mcl);
     utils.setOpt(ska,"Kbase",Kbase);
 
+    // Fr上における1の設定
     const Fr_num_1 = new mcl.Fr();
     Fr_num_1.setInt(1);
+    // K0 = (1/a0) * Kbase
     const k0 = mcl.div(Fr_num_1,ask["a0"]);
     const K0 = mcl.mul(Kbase,k0);
     utils.setOpt(ska,"K0",K0);
 
     for (let i in attriblist) {
+        // Fr上におけるnumberの設定
         let number = attributes[attriblist[i]];
         let Fr_num_x = new mcl.Fr();
         Fr_num_x.setInt(number);
 
+        // Ku = (1/(a+bu)) * Kbase
         let bu = mcl.mul(Fr_num_x,ask["b"]);
-        let kx = mcl.add(ask["a"],bu);
-        kx = mcl.div(Fr_num_1,kx);
-
+        let ku= mcl.add(ask["a"],bu);
+        ku = mcl.div(Fr_num_1,ku);
         let Kx = mcl.mul(Kbase,kx);
         utils.setOpt(ska,"K"+String(number),Kx);
     }
