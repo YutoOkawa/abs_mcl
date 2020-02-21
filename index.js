@@ -116,7 +116,21 @@ function generateSign(tpk,apk,ska,message,policy) {
     utils.setOpt(sign,"W",W);
 
     for (let i=1; i<msp.length+1; i++) {
+        let Si;
         // TODO: Siの演算
+        // multi = (C + g^μ)^r_i
+        let multi = mcl.mul(tpk["g"],μ);
+        multi = mcl.add(multi,apk["C"]);
+        multi = mcl.mul(multi,r[i]);
+
+        // multi = multi + (ska[Ki]^r0)
+        if (ska["K"+String(i)] != undefined) {
+            let K = mcl.mul(ska["K"+String(i)],r[0]);
+            multi = mcl.add(multi,K);
+        }
+
+        Si = multi;
+        utils.setOpt(sign,"S"+String(i),Si);
     }
 
     for (let j=1; j<msp[0].length+1; j++) {
