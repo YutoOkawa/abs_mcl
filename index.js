@@ -117,7 +117,6 @@ function generateSign(tpk,apk,ska,message,policy) {
 
     for (let i=1; i<msp.length+1; i++) {
         let Si;
-        // TODO: Siの演算
         // multi = (C + g^μ)^r_i
         let multi = mcl.mul(tpk["g"],μ);
         multi = mcl.add(multi,apk["C"]);
@@ -134,9 +133,25 @@ function generateSign(tpk,apk,ska,message,policy) {
     }
 
     for (let j=1; j<msp[0].length+1; j++) {
-        // TODO: Pjの演算
-    }
+        var Pj = new mcl.G2();
+        for (let i=1; i<msp.length+1; i++) {
+            // base = Aj + Bj^ui
+            let ui = new mcl.Fr();
+            ui.setInt(attributes[attribute_msp[i-1]]);
+            let base = mcl.mul(apk["B"+String(j)],ui);
+            base = mcl.add(apk["A"+String(j)],base);
 
+            // Pj = base ^ Mij*ri
+            let exp_fr = new mcl.Fr();
+            exp_fr.setInt(msp[i-1][j-1]);
+            let exp = mcl.mul(exp_fr,r[i]);
+            let multi = mcl.mul(base,exp);
+
+            // Pj += multi
+            Pj = mcl.add(Pj,multi);
+        }
+        utils.setOpt(sign,"P"+String(j),Pj);
+    }
     return sign;
 }
 
