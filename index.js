@@ -155,6 +155,29 @@ function generateSign(tpk,apk,ska,message,policy) {
     return sign;
 }
 
+function verify(tpk,apk,sign,message,policy) {
+    // TODO: getMSP関数の実装
+    const msp = [[1],[1],[0],[0]];
+
+    // μ = hash(message | policy)
+    const μ = mcl.hashToFr(message+policy);
+
+    if (sign["Y"].isZero()) {
+        return false;
+    }
+
+    // pair_wa0 = e(W,A0)
+    const pair_wa0 = mcl.pairing(sign["W"],apk["A0"]);
+    console.log(pair_wa0);
+    // pair_Yh0 = e(Y,h0)
+    const pair_Yh0 = mcl.pairing(sign["Y"],tpk["h0"]);
+    console.log(pair_Yh0);
+
+    if (!pair_wa0.isEqual(pair_Yh0)) {
+        return false;
+    }
+}
+
 function testABS() {
     const tpk = trusteeSetup();
     console.log("tpk",tpk);
@@ -167,4 +190,7 @@ function testABS() {
 
     const sign = generateSign(tpk,keypair["apk"],ska,"LoveLive","Aqours OR AZALEA")
     console.log("sign",sign);
+
+    const ver = verify(tpk,keypair["apk"],sign,"LoveLive","Aqours OR AZALEA");
+    console.log("ver",ver);
 }
