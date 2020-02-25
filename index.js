@@ -1,5 +1,6 @@
 const mcl = require("mcl-wasm");
 const utils = require("./utils");
+const attributes_list = ["Aqours","AZALEA","GuiltyKiss","CYaRon"];
 const attributes = {"Aqours":2,"AZALEA":3,"GuiltyKiss":4,"CYaRon":5};
 const attribute_msp = {"Aqours":2,2:"Aqours","AZALEA":3,3:"AZALEA","GuiltyKiss":4,4:"GuiltyKiss","CYaRon":5,5:"CYaRon"};
 
@@ -137,7 +138,7 @@ function generateSign(tpk,apk,ska,message,policy) {
         for (let i=1; i<msp.length+1; i++) {
             // base = Aj + Bj^ui
             let ui = new mcl.Fr();
-            ui.setInt(attributes[attribute_msp[i-1]]);
+            ui.setInt(attributes[attribute_msp[attributes_list[i-1]]]);
             let base = mcl.mul(apk["B"+String(j)],ui);
             base = mcl.add(apk["A"+String(j)],base);
 
@@ -162,35 +163,84 @@ function verify(tpk,apk,sign,message,policy) {
     // μ = hash(message | policy)
     const μ = mcl.hashToFr(message+policy);
 
+    // Yの検証
     if (sign["Y"].isZero()) {
         return false;
     }
 
-    // pair_wa0 = e(W,A0)
+    // e(W,A0) =? e(Y,h0)
     const pair_wa0 = mcl.pairing(sign["W"],apk["A0"]);
-    console.log(pair_wa0);
-    // pair_Yh0 = e(Y,h0)
     const pair_Yh0 = mcl.pairing(sign["Y"],tpk["h0"]);
-    console.log(pair_Yh0);
-
     if (!pair_wa0.isEqual(pair_Yh0)) {
         return false;
     }
+
+    for (let j=1; j<msp[0].length+1; j++) {
+        // e(Si,(AjBj^ui)^Mij)の計算
+        // a = Si, b = (AjBj^ui)^Mij
+        var multi = new mcl.GT();
+        for (let i=1; i<msp.length+1; i++) {
+            let a = sign["S"+String(i)];
+            let ui = new mcl.Fr();
+            ui.setInt(attribute_msp[attributes_list[i-1]]);
+            let Bj = mcl.mul(apk["B"+String(j)],ui);
+            let b = mcl.add(apk["A"+String(j)],Bj);
+            let exp_b = new mcl.Fr();
+            exp_b.setInt(msp[i-1][j-1]);
+            b = mcl.mul(b,exp_b);
+            let mul_pairing = mcl.pairing(a,b);
+            multi = mcl.add(multi,mul_pairing);
+            // console.log("pairing",multi);
+        }
+        // console.log("multi",multi);
+        // j==1 e(Y,h1)e(Cg^μ,P1)
+        // j>1 e(Cg^μ,Pj)
+        // ver_pairing = e(Cg^μ,Pj)
+        let cg = mcl.mul(tpk["g"],μ);
+        cg = mcl.add(apk["C"],cg);
+        var ver_pairing = mcl.pairing(cg,sign["P"+String(j)]);
+        if (j==1) {
+            // before = e(Y,h1)
+            let before = mcl.pairing(sign["Y"],tpk["h"+String(1)]);
+            ver_pairing = mcl.add(ver_pairing,before);
+        }
+        // console.log("ver_pairing",ver_pairing);
+        if (!multi.isEqual(ver_pairing)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function testABS() {
+    console.time("Setup");
     const tpk = trusteeSetup();
-    console.log("tpk",tpk);
+    // console.log("tpk",tpk);
 
     const keypair = authoritySetup(tpk);
-    console.log("keypair",keypair);
+    console.timeEnd("Setup");
+    console.log("Setup Completed.");
+    // console.log("keypair",keypair);
 
-    const ska = generateAttributes(keypair["ask"],["Aqours","AZALEA"]);
-    console.log("ska",ska);
+    console.time("AttrGen");
+    const ska = generateAttributes(keypair["ask"],["Aqours"]);
+    console.timeEnd("AttrGen");
+    console.log("Key Generated.")
+    // console.log("ska",ska);
 
-    const sign = generateSign(tpk,keypair["apk"],ska,"LoveLive","Aqours OR AZALEA")
-    console.log("sign",sign);
+    console.time("Sign");
+    const sign = generateSign(tpk,keypair["apk"],ska,"LoveLive","Aqours OR AZALEA");
+    console.timeEnd("Sign");
+    console.log("Sign Generated.")
+    // console.log("sign",sign);
 
+    console.time("Ver");
     const ver = verify(tpk,keypair["apk"],sign,"LoveLive","Aqours OR AZALEA");
-    console.log("ver",ver);
+    console.timeEnd("Ver");
+    if (ver) {
+        console.log("OK");
+    } else {
+        console.log("failed...");
+    }
+    // console.log("ver",ver);
 }
